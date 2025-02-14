@@ -6,8 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import qrcode
-from flask import Flask, request, jsonify
-import threading
+import requests
 
 import qrcode.constants
 
@@ -21,7 +20,8 @@ def setup_databases():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
-            assigned_to TEXT DEFAULT 'Slobodno'
+            assigned_to TEXT DEFAULT 'Slobodno',
+            last_audit TEXT
         )
     ''')
     conn_inv.commit()
@@ -47,7 +47,7 @@ def generate_qr_code(equipment_id, file_name):
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
         box_size=10,
-        border=4
+        border=4,
     )
     qr.add_data(str(equipment_id))
     qr.make(fit=True)
@@ -297,12 +297,15 @@ class ITInventory(QWidget):
         cursor = conn.cursor()
         cursor.execute("INSERT INTO equipment (name, category, assigned_to) VALUES (?, ?, ?)", 
                     (name, category, assigned_to if assigned_to != "Slobodno" else "Slobodno"))
+        equipment_id = cursor.lastrowid
         conn.commit()
         conn.close()
 
+        # Generate QR Code
+        generate_qr_code(equipment_id, f"qr_codes/equipment_{equipment_id}.png")
+
         self.load_equipment()  # Refresh Table
         self.name_input.clear()
-
 
     # Load Equipment into Table
     def load_equipment(self):
@@ -312,7 +315,7 @@ class ITInventory(QWidget):
         conn = sqlite3.connect("inventory.db")
         cursor = conn.cursor()
 
-        query = "SELECT * FROM equipment WHERE 1=1"
+        query = "SELECT id, name, category, assigned_to, last_audit FROM equipment WHERE 1=1"
         params = []
 
         if search_text:
@@ -334,6 +337,7 @@ class ITInventory(QWidget):
             self.table.setItem(row_idx, 1, QTableWidgetItem(row[1]))  # Naziv
             self.table.setItem(row_idx, 2, QTableWidgetItem(row[2]))  # Kategorija
             self.table.setItem(row_idx, 3, QTableWidgetItem(row[3]))  # Dodijeljeno
+            self.table.setItem(row_idx, 4, QTableWidgetItem(row[4] if row[4] else "Nije skenirano")) # Posljednji audit
 
             # Stupac "Akcije" (Dodijeli ili Odvojiti)
             action_layout = QHBoxLayout()

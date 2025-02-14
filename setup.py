@@ -1,6 +1,6 @@
 import sqlite3
 
-def setup_db():
+def setup_dbs():
     # Inventory Database
     conn_inv = sqlite3.connect("inventory.db")
     cursor_inv = conn_inv.cursor()
@@ -9,7 +9,8 @@ def setup_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
-            assigned_to TEXT DEFAULT 'Slobodno'
+            assigned_to TEXT DEFAULT 'Slobodno',
+            last_audit TEXT
         )
     ''')
     conn_inv.commit()
@@ -29,5 +30,5 @@ def setup_db():
     conn_emp.commit()
     conn_emp.close()
 
-setup_db()
+setup_dbs()
 print("Database and tables recreated successfully!")
