@@ -5,6 +5,11 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QComboBox, QLineEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt
+import qrcode
+from flask import Flask, request, jsonify
+import threading
+
+import qrcode.constants
 
 # Database Setup
 def setup_databases():
@@ -35,6 +40,20 @@ def setup_databases():
     ''')
     conn_emp.commit()
     conn_emp.close()
+
+# Generate QR Code
+def generate_qr_code(equipment_id, file_name):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4
+    )
+    qr.add_data(str(equipment_id))
+    qr.make(fit=True)
+
+    img = qr.make_image(fill='black', back_color='white')
+    img.save(file_name)
 
 # Employee Management Window
 class EmployeeWindow(QWidget):
