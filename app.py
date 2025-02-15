@@ -2,11 +2,13 @@ import sys
 import sqlite3
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QTableWidget, QTableWidgetItem, QComboBox, QLineEdit, QMessageBox
+    QTableWidget, QTableWidgetItem, QComboBox, QLineEdit, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 import qrcode
 import random
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import qrcode.constants
 
@@ -64,6 +66,18 @@ def generate_qr_code(equipment_id, file_name):
 
     img = qr.make_image(fill='black', back_color='white')
     img.save(file_name)
+
+def export_to_excel():
+    file_path,_ = QFileDialog.getSaveFileName(None, "Spremi izvještaj", "", "Excel datoteke (*.xlsx)")
+    if not file_path:
+        return
+    
+    conn = sqlite3.connect("inventory.db")
+    df = pd.read_sql_query("SELECT * FROM equipment", conn)
+    conn.close()
+
+    df.to_excel(file_path, index=False)
+    QMessageBox.information(None, "Izvoz završen", f"Izvještaj spremljen kao '{file_path}'.")
 
 # Employee Management Window
 class EmployeeWindow(QWidget):
@@ -289,6 +303,11 @@ class ITInventory(QWidget):
         main_layout.addLayout(input_layout)
         main_layout.addLayout(filter_layout)
         main_layout.addWidget(self.table)
+
+        # Add Button for Excel Report
+        export_button = QPushButton("Izvezi izvještaj u Excel")
+        export_button.clicked.connect(export_to_excel)
+        main_layout.addWidget(export_button)
         
         self.setLayout(main_layout)
         self.load_equipment()
