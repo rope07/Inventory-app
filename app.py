@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
     QTableWidget, QTableWidgetItem, QComboBox, QLineEdit, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 import qrcode
 import random
 
@@ -67,6 +67,7 @@ def generate_qr_code(equipment_id, file_name):
 
 # Employee Management Window
 class EmployeeWindow(QWidget):
+    employee_added = pyqtSignal()
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
@@ -92,6 +93,8 @@ class EmployeeWindow(QWidget):
         add_employee_button = QPushButton("Dodaj djelatnika")
         add_employee_button.clicked.connect(self.add_employee)
         layout.addWidget(add_employee_button)
+
+        employee_added = pyqtSignal()
 
         # Employee Table
         self.employee_table = QTableWidget()
@@ -147,6 +150,7 @@ class EmployeeWindow(QWidget):
         self.first_name_input.clear()
         self.last_name_input.clear()
         self.company_input.clear()
+        self.employee_added.emit()
 
     # Delete Selected Employee
     def delete_employee(self):
@@ -193,7 +197,7 @@ class EmployeeWindow(QWidget):
 
         conn = sqlite3.connect("inventory.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM equipment WHERE assigned_to = ?", (employee_name,))
+        cursor.execute("SELECT id, name, category FROM equipment WHERE assigned_to = ?", (employee_name,))
         rows = cursor.fetchall()
         conn.close()
 
@@ -203,13 +207,13 @@ class EmployeeWindow(QWidget):
         
         self.equipment_window = QWidget()
         self.equipment_window.setWindowTitle(f"Dodijeljena oprema za {employee_name}")
-        self.equipment_window.setGeometry(400, 200, 600, 400)
+        self.equipment_window.setGeometry(400, 200, 340, 400)
 
         layout = QVBoxLayout()
 
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["ID", "Naziv", "Kategorija", "Dodijeljeno"])
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["ID", "Naziv", "Kategorija"])
         table.setRowCount(len(rows))
 
         for row_idx, row in enumerate(rows):
@@ -292,6 +296,7 @@ class ITInventory(QWidget):
     # Show Employees Window
     def show_employees_window(self):
         self.employee_window = EmployeeWindow(self)
+        self.employee_window.employee_added.connect(self.load_employees)
         self.employee_window.show()
 
     # Load Employees into Dropdown
