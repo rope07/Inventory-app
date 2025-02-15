@@ -6,9 +6,19 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import qrcode
-import requests
+import random
 
 import qrcode.constants
+
+def generate_unique_id(database, table):
+    conn = sqlite3.connect(database)
+    cursor = conn.cursor()
+    while True:
+        random_id = random.randint(0, 9999)
+        cursor.execute(f"SELECT id FROM {table} WHERE id = ?", (random_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            return random_id
 
 # Database Setup
 def setup_databases():
@@ -17,7 +27,7 @@ def setup_databases():
     cursor_inv = conn_inv.cursor()
     cursor_inv.execute('''
         CREATE TABLE IF NOT EXISTS equipment (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
             assigned_to TEXT DEFAULT 'Slobodno',
@@ -32,7 +42,7 @@ def setup_databases():
     cursor_emp = conn_emp.cursor()
     cursor_emp.execute('''
         CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             company TEXT NOT NULL
@@ -61,7 +71,7 @@ class EmployeeWindow(QWidget):
         super().__init__()
         self.parent = parent
         self.setWindowTitle("Upravljanje djelatnicima")
-        self.setGeometry(300, 200, 500, 350)
+        self.setGeometry(300, 200, 440, 500)
 
         layout = QVBoxLayout()
 
@@ -123,11 +133,12 @@ class EmployeeWindow(QWidget):
         if not first_name or not last_name or not company:
             QMessageBox.warning(self, "Greška", "Popunite sva polja!")
             return
-
+        
+        employee_id = generate_unique_id("employees.db", "employees")
         conn = sqlite3.connect("employees.db")
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO employees (first_name, last_name, company) VALUES (?, ?, ?)", 
-                       (first_name, last_name, company))
+        cursor.execute("INSERT INTO employees (id, first_name, last_name, company) VALUES (?, ?, ?, ?)", 
+                       (employee_id, first_name, last_name, company))
         conn.commit()
         conn.close()
 
@@ -145,15 +156,28 @@ class EmployeeWindow(QWidget):
             return
 
         employee_id = self.employee_table.item(selected_row, 0).text()
+        first_name = self.employee_table.item(selected_row, 1).text()
+        last_name = self.employee_table.item(selected_row, 2).text()
+        company = self.employee_table.item(selected_row, 3).text()
 
-        conn = sqlite3.connect("employees.db")
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM employees WHERE id = ?", (employee_id,))
-        conn.commit()
-        conn.close()
+        employee_name = f"{first_name} {last_name} ({company})"
+
+        conn_inv = sqlite3.connect("inventory.db")
+        cursor_inv = conn_inv.cursor()
+        cursor_inv.execute("UPDATE equipment SET assigned_to = 'Slobodno' WHERE assigned_to = ?", (employee_name,))
+        conn_inv.commit()
+        conn_inv.close()
+
+        conn_emp = sqlite3.connect("employees.db")
+        cursor_emp = conn_emp.cursor()
+        cursor_emp.execute("DELETE FROM employees WHERE id = ?", (employee_id,))
+        conn_emp.commit()
+        conn_emp.close()
 
         self.load_employees()
         self.parent.load_employees()  # Refresh dropdown in main window
+
+        self.parent.load_equipment()
 
     def show_assigned_equipment(self):
         selected_row = self.employee_table.currentRow()
@@ -201,7 +225,7 @@ class ITInventory(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("IT Inventar")
-        self.setGeometry(100, 100, 1000, 800)
+        self.setGeometry(100, 100, 850, 650)
         
         # Layouts
         main_layout = QVBoxLayout()
@@ -293,11 +317,11 @@ class ITInventory(QWidget):
             QMessageBox.warning(self, "Greška", "Naziv i kategorija su obavezni!")
             return
 
+        equipment_id = generate_unique_id("inventory.db", "equipment")
         conn = sqlite3.connect("inventory.db")
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO equipment (name, category, assigned_to) VALUES (?, ?, ?)", 
-                    (name, category, assigned_to if assigned_to != "Slobodno" else "Slobodno"))
-        equipment_id = cursor.lastrowid
+        cursor.execute("INSERT INTO equipment (id, name, category, assigned_to) VALUES (?, ?, ?, ?)", 
+                    (equipment_id, name, category, assigned_to if assigned_to != "Slobodno" else "Slobodno"))
         conn.commit()
         conn.close()
 

@@ -6,7 +6,7 @@ def setup_dbs():
     cursor_inv = conn_inv.cursor()
     cursor_inv.execute('''
         CREATE TABLE IF NOT EXISTS equipment (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
             assigned_to TEXT DEFAULT 'Slobodno',
@@ -21,7 +21,7 @@ def setup_dbs():
     cursor_emp = conn_emp.cursor()
     cursor_emp.execute('''
         CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             company TEXT NOT NULL
